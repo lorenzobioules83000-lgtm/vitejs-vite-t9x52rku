@@ -1,11 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import emailjs from '@emailjs/browser';
-import { loadStripe } from '@stripe/stripe-js';
 
 const LOGO_URL = '/logo.png';
-
-// Initialisation de Stripe avec ta clé publique
-const stripePromise = loadStripe('pk_test_51UAwFkFLjOZjc7imniP81oue0Mw7d1NOHLaw48MqSUZVqN5QqNs3Zp4zA8qUf5noHBtrb4nja66yXpOIu5S5HiyF001Fz3tNZN');
 
 interface Product {
   id: number;
@@ -44,7 +40,6 @@ export default function App() {
   });
 
   const [step, setStep] = useState<'cart' | 'shipping'>('cart');
-  const [lastOrderTotal, setLastOrderTotal] = useState('');
 
   const handleLogoClick = () => {
     const newCount = logoClicks + 1;
@@ -224,7 +219,7 @@ export default function App() {
     }
   };
 
-  // Validation de la commande, envoi EmailJS et redirection vers le paiement Stripe sécurisé via le backend
+  // Validation de la commande, envoi EmailJS et redirection moderne vers Stripe
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -266,7 +261,10 @@ export default function App() {
       const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cartItems: cartItemsForStripe }),
+        body: JSON.stringify({ 
+          items: cartItemsForStripe,
+          customerDetails: { email: shippingInfo.email }
+        }),
       });
 
       const session = await response.json();
@@ -276,13 +274,11 @@ export default function App() {
         return;
       }
 
-      // 4. Redirection vers la vraie page de paiement Stripe
-      const stripe = await stripePromise;
-      if (!stripe) throw new Error("Stripe n'a pas pu s'initialiser.");
-
-      const result = await stripe.redirectToCheckout({ sessionId: session.id });
-      if (result.error) {
-        alert(result.error.message);
+      // 4. Redirection moderne et directe vers l'URL de paiement Stripe
+      if (session.url) {
+        window.location.href = session.url;
+      } else {
+        throw new Error("URL de redirection Stripe introuvable.");
       }
 
     } catch (err) {
