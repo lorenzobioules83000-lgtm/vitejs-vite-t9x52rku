@@ -15,7 +15,7 @@ export default async function handler(req, res) {
       price_data: {
         currency: 'eur',
         product_data: { name: item.name },
-        unit_amount: Math.round(item.price * 100),
+        unit_amount: Math.round(item.price * 100), // Stripe utilise les centimes
       },
       quantity: item.quantity,
     }));
@@ -30,7 +30,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ id: session.id });
   } catch (err) {
-    console.error('Erreur Stripe:', err.message);
+    console.error("Erreur Stripe:", err.message);
     return res.status(500).json({ error: err.message });
   }
 }
