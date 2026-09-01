@@ -14,25 +14,18 @@ export default async function handler(req, res) {
       rawBody += chunk;
     }
     
-    console.log('Raw body received:', rawBody); // Pour voir dans les logs Vercel si besoin
-
     const body = rawBody ? JSON.parse(rawBody) : {};
     
-    // On accepte soit body.items, soit si le frontend envoie directement un tableau
-    const items = body.items || (Array.isArray(body) ? body : null);
-    const customerDetails = body.customerDetails || {};
-
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ error: "Le panier (items) est vide ou introuvable." });
-    }
+    // Récupération de tous les cas de figure possibles du panier
+    const items = body.items || body.cart || (Array.isArray(body) ? body : [{ name: 'Commande globale', price: body.total || 225, quantity: 1 }]);
 
     const lineItems = items.map((item) => ({
       price_data: {
         currency: 'eur',
         product_data: {
-          name: item.name || 'Produit',
+          name: item.name || 'Article',
         },
-        unit_amount: Math.round((item.price || 0) * 100),
+        unit_amount: Math.round((item.price || 225) * 100),
       },
       quantity: item.quantity || 1,
     }));
@@ -43,7 +36,7 @@ export default async function handler(req, res) {
       mode: 'payment',
       success_url: `${req.headers.origin}/?success=true`,
       cancel_url: `${req.headers.origin}/?canceled=true`,
-      customer_email: customerDetails.email,
+      customer_email: body.customerDetails?.email || body.email,
     });
 
     return res.status(200).json({ id: session.id });
