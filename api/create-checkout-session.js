@@ -5,19 +5,31 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
-    return res.status(405).end('Method Not Allowed');
+    return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
   try {
-    // Récupération et parsing manuel du corps de la requête sur Vercel
-    let rawBody = '';
-    for await (const chunk of req) {
-      rawBody += chunk;
+    // Sécurité maximale pour récupérer le corps de la requête sous Vercel
+    let body = req.body;
+    
+    if (typeof body === 'string') {
+      body = JSON.parse(body);
+    } else if (!body || Object.keys(body).length === 0) {
+      // Si req.body est vide, on tente de le lire via les chunks proprement
+      let rawData = '';
+      for await (const chunk of req) {
+        rawData += chunk;
+      }
+      if (rawData) {
+        body = JSON.parse(rawData);
+      }
     }
-    const { items, customerDetails } = rawBody ? JSON.parse(rawBody) : {};
 
-    if (!items || !Array.isArray(items)) {
-      return.status(400).json({ error: "Le panier (items) est vide ou introuvable." });
+    const items = body?.items;
+    const customerDetails = body?.customerDetails;
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: "Le panier est vide ou invalide." });
     }
 
     const lineItems = items.map((item) => ({
@@ -42,7 +54,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ id: session.id });
   } catch (err) {
-    console.error('Stripe error:', err);
-    return res.status(500).json({ error: err.message });
+    console.error('Stripe error details:', err);
+    return res.status(500).json({ error: err.message || 'Erreur interne du serveur' });
   }
 }
