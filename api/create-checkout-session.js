@@ -9,7 +9,16 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { items, customerDetails } = req.body;
+    // Récupération et parsing manuel du corps de la requête sur Vercel
+    let rawBody = '';
+    for await (const chunk of req) {
+      rawBody += chunk;
+    }
+    const { items, customerDetails } = rawBody ? JSON.parse(rawBody) : {};
+
+    if (!items || !Array.isArray(items)) {
+      return.status(400).json({ error: "Le panier (items) est vide ou introuvable." });
+    }
 
     const lineItems = items.map((item) => ({
       price_data: {
