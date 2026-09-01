@@ -1,36 +1,39 @@
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+import Stripe from 'stripe';
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Méthode non autorisée' });
+    res.setHeader('Allow', 'POST');
+    return res.status(405).end('Method Not Allowed');
   }
 
   try {
-    const { cartItems } = req.body;
-    if (!cartItems || cartItems.length === 0) {
-      return res.status(400).json({ error: 'Le panier est vide' });
-    }
+    const { items, customerDetails } = req.body;
 
-    const line_items = cartItems.map((item) => ({
+    const lineItems = items.map((item) => ({
       price_data: {
         currency: 'eur',
-        product_data: { name: item.name },
-        unit_amount: Math.round(item.price * 100), // Stripe utilise les centimes
+        product_data: {
+          name: item.name,
+        },
+        unit_amount: Math.round(item.price * 100),
       },
       quantity: item.quantity,
     }));
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
-      line_items,
+      line_items: lineItems,
       mode: 'payment',
       success_url: `${req.headers.origin}/?success=true`,
       cancel_url: `${req.headers.origin}/?canceled=true`,
+      customer_email: customerDetails?.email,
     });
 
     return res.status(200).json({ id: session.id });
   } catch (err) {
-    console.error("Erreur Stripe:", err.message);
+    console.error('Stripe error:', err);
     return res.status(500).json({ error: err.message });
   }
 }
