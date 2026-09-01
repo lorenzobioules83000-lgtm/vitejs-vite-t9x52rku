@@ -9,19 +9,15 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Sécurité maximale pour récupérer le corps de la requête sous Vercel
+    // On récupère directement req.body (si Vercel l'a déjà parsé) 
+    // ou on gère le cas où c'est une chaîne de caractères brute
     let body = req.body;
     
     if (typeof body === 'string') {
-      body = JSON.parse(body);
-    } else if (!body || Object.keys(body).length === 0) {
-      // Si req.body est vide, on tente de le lire via les chunks proprement
-      let rawData = '';
-      for await (const chunk of req) {
-        rawData += chunk;
-      }
-      if (rawData) {
-        body = JSON.parse(rawData);
+      try {
+        body = JSON.parse(body);
+      } catch (e) {
+        body = {};
       }
     }
 
