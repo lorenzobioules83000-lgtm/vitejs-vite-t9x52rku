@@ -15,9 +15,7 @@ export default async function handler(req, res) {
     }
     
     const body = rawBody ? JSON.parse(rawBody) : {};
-    
-    // Récupération de tous les cas de figure possibles du panier
-    const items = body.items || body.cart || (Array.isArray(body) ? body : [{ name: 'Commande globale', price: body.total || 225, quantity: 1 }]);
+    const items = body.items || body.cart || (Array.isArray(body) ? body : [{ name: 'Commande', price: 225, quantity: 1 }]);
 
     const lineItems = items.map((item) => ({
       price_data: {
@@ -39,7 +37,11 @@ export default async function handler(req, res) {
       customer_email: body.customerDetails?.email || body.email,
     });
 
-    return res.status(200).json({ id: session.id });
+    // On renvoie à la fois id et url pour satisfaire n'importe quel code frontend
+    return res.status(200).json({ 
+      id: session.id, 
+      url: session.url 
+    });
   } catch (err) {
     console.error('Stripe error:', err);
     return res.status(500).json({ error: err.message });
