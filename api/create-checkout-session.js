@@ -9,7 +9,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Récupération et parsing manuel du corps de la requête sur Vercel
     let rawBody = '';
     for await (const chunk of req) {
       rawBody += chunk;
@@ -17,7 +16,7 @@ export default async function handler(req, res) {
     const { items, customerDetails } = rawBody ? JSON.parse(rawBody) : {};
 
     if (!items || !Array.isArray(items)) {
-      return.status(400).json({ error: "Le panier (items) est vide ou introuvable." });
+      return res.status(400).json({ error: "Le panier (items) est vide ou introuvable." });
     }
 
     const lineItems = items.map((item) => ({
