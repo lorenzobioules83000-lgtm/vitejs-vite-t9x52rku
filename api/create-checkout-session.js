@@ -16,9 +16,8 @@ module.exports = async function handler(req, res) {
       } catch (e) {
         body = {};
       }
-    }
-
-    const items = body?.items;
+    }    
+    const items = body?.items;  
     const customerDetails = body?.customerDetails;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
