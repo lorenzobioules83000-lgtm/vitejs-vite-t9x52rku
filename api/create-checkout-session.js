@@ -1,16 +1,13 @@
-import Stripe from 'stripe';
-
+const Stripe = require('stripe');
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
   try {
-    // On récupère directement req.body (si Vercel l'a déjà parsé) 
-    // ou on gère le cas où c'est une chaîne de caractères brute
     let body = req.body;
     
     if (typeof body === 'string') {
@@ -53,4 +50,4 @@ export default async function handler(req, res) {
     console.error('Stripe error details:', err);
     return res.status(500).json({ error: err.message || 'Erreur interne du serveur' });
   }
-}
+};
