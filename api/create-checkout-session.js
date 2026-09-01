@@ -1,55 +1,54 @@
-const Stripe = require('stripe');
+import Stripe from 'stripe';
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
-    return res.status(405).json({ error: 'Method Not Allowed' });
+    return res.status(405).end('Method Not Allowed');
   }
 
   try {
-    var body = req.body;
-    
-    if (typeof body === 'string') {
-      try {
-        body = JSON.parse(body);
-      } catch (e) {
-        body = {};
-      }
+    let rawBody = '';
+    for await (const chunk of req) {
+      rawBody += chunk;
     }
+    
+    console.log('Raw body received:', rawBody); // Pour voir dans les logs Vercel si besoin
 
-    var items = body && body.items;
-    var customerDetails = body && body.customerDetails;
+    const body = rawBody ? JSON.parse(rawBody) : {};
+    
+    // On accepte soit body.items, soit si le frontend envoie directement un tableau
+    const items = body.items || (Array.isArray(body) ? body : null);
+    const customerDetails = body.customerDetails || {};
 
     if (!items || !Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ error: "Le panier est vide ou invalide." });
+      return res.status(400).json({ error: "Le panier (items) est vide ou introuvable." });
     }
 
-    var lineItems = items.map(function(item) {
-      return {
-        price_data: {
-          currency: 'eur',
-          product_data: {
-            name: item.name
-          },
-          unit_amount: Math.round(item.price * 100)
+    const lineItems = items.map((item) => ({
+      price_data: {
+        currency: 'eur',
+        product_data: {
+          name: item.name || 'Produit',
         },
-        quantity: item.quantity
-      };
-    });
+        unit_amount: Math.round((item.price || 0) * 100),
+      },
+      quantity: item.quantity || 1,
+    }));
 
-    var session = await stripe.checkout.sessions.create({
+    const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: lineItems,
       mode: 'payment',
-      success_url: req.headers.origin + '/?success=true',
-      cancel_url: req.headers.origin + '/?canceled=true',
-      customer_email: customerDetails && customerDetails.email
+      success_url: `${req.headers.origin}/?success=true`,
+      cancel_url: `${req.headers.origin}/?canceled=true`,
+      customer_email: customerDetails.email,
     });
 
     return res.status(200).json({ id: session.id });
   } catch (err) {
-    console.error('Stripe error details:', err);
-    return res.status(500).json({ error: err.message || 'Erreur interne du serveur' });
+    console.error('Stripe error:', err);
+    return res.status(500).json({ error: err.message });
   }
-};
+}
